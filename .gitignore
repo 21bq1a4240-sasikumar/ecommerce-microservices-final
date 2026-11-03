@@ -1,0 +1,17 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Maven build output
+**/target/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Temporary files
+*.log
+*.tmp
+
+# Old Compose file
+docker-compose.yml.txt

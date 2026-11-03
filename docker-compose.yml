@@ -1,0 +1,122 @@
+services:
+  catalog-db:
+    image: postgres:16
+    container_name: catalog-db
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+    volumes:
+      - catalog-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog_user -d catalog_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  inventory-db:
+    image: postgres:16
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+    volumes:
+      - inventory-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog_user -d inventory_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  order-db:
+    image: postgres:16
+    container_name: order-db
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+    volumes:
+      - order-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_user -d order_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  catalog-service:
+    build:
+      context: ./catalog-service/catalog-service
+    environment:
+      DB_PASSWORD: ${CATALOG_DB_PASSWORD}
+    container_name: catalog-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  inventory-service:
+    build:
+      context: ./inventory-service/inventory-service
+    environment:
+      DB_PASSWORD: ${INVENTORY_DB_PASSWORD}
+    container_name: inventory-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build:
+      context: ./order-service/order-service
+    environment:
+      DB_PASSWORD: ${ORDER_DB_PASSWORD}
+    container_name: order-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      order-db:
+        condition: service_healthy
+      catalog-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8083:8083"
+    depends_on:
+      catalog-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  catalog-data:
+  inventory-data:
+  order-data:
